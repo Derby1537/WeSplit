@@ -13,6 +13,8 @@ struct ContentView: View {
     @State private var tipPercentage = 20
     @FocusState private var amountIsFocused: Bool
 
+    @State private var showCopiedMessage: Bool = false
+
     var totalPerPerson: Double {
         let peopleCount = Double(numberOfPeople + 2)
         let tipSelection = Double(tipPercentage)
@@ -36,7 +38,9 @@ struct ContentView: View {
                         format: .currency(
                             code: Locale.current.currency?.identifier ?? "USD")
                     )
-                    .keyboardType(.decimalPad)
+                    #if os(iOS)
+                        .keyboardType(.decimalPad)
+                    #endif
                     .focused($amountIsFocused)
 
                     Picker("Number of people", selection: $numberOfPeople) {
@@ -60,9 +64,25 @@ struct ContentView: View {
                     Text(
                         totalPerPerson,
                         format: .currency(
-                            code: Locale.current.currency?.identifier ?? "USD"))
+                            code: Locale.current.currency?.identifier ?? "USD")
+                    )
+                    .onTapGesture {
+                        UIPasteboard.general.string = totalPerPerson.formatted(
+                            .currency(
+                                code: Locale.current.currency?.identifier
+                                    ?? "USD"))
+                        withAnimation {
+                            showCopiedMessage = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            withAnimation {
+                                showCopiedMessage = false
+                            }
+                        }
+                    }
                 }
             }
+            .padding()
             .navigationTitle("WeSplit")
             .toolbar {
                 if amountIsFocused {
@@ -70,6 +90,18 @@ struct ContentView: View {
                         amountIsFocused = false
                     }
                 }
+            }
+            .scrollDismissesKeyboard(.immediately)
+        }
+        .overlay(alignment: .bottom) {
+            if showCopiedMessage {
+                Text("Amount copied to clipboard")
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .glassEffect()
+                .clipShape(.capsule)
+                .padding(.bottom, 20)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
     }
